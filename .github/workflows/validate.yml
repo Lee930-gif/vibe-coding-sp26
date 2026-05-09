@@ -1,0 +1,54 @@
+name: Validate submission
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed
+        uses: tj-actions/changed-files@v44
+        with:
+          files: 'students/**/*.md'
+
+      - name: Check exactly one student file changed
+        if: steps.changed.outputs.all_changed_files_count != '1'
+        run: |
+          echo "::error::This PR changes ${{ steps.changed.outputs.all_changed_files_count }} student files. Each PR must change exactly one students/*.md file."
+          exit 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Validate the changed file
+        run: |
+          for f in ${{ steps.changed.outputs.all_changed_files }}; do
+            python3 scripts/validate-submission.py "$f"
+          done
+
+      - name: Comment success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '✅ Submission validated. Ready for review.'
+            });
