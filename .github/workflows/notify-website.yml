@@ -1,0 +1,17 @@
+name: Notify website on merge
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger website sync
+        env:
+          GH_TOKEN: ${{ secrets.WEBSITE_DISPATCH_TOKEN }}
+        run: |
+          gh api -X POST \
+            repos/yisiliu/vibe-coding-class-page/dispatches \
+            -f event_type=submissions-updated
